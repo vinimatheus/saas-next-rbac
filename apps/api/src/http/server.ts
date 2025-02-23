@@ -14,5 +14,5 @@ app.setValidatorCompiler(validatorCompiler)
 app.register(fastifyCors)
 
 app.listen({ port: 3333 }).then(() => {
-  console.log('HTTP server running!')
+  console.log('HTTP server running! 🔥')
 })
