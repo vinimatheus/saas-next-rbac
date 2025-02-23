@@ -2,6 +2,7 @@ import fastifyCors from '@fastify/cors'
 import fastifyJwt from '@fastify/jwt'
 import fastifySwagger from '@fastify/swagger'
 import fastifySwaggerUI from '@fastify/swagger-ui'
+import { env } from '@saas/env'
 import fastify from 'fastify'
 import {
   jsonSchemaTransform,
@@ -11,17 +12,24 @@ import {
 } from 'fastify-type-provider-zod'
 
 import { errorHandler } from '@/http/error-handler'
+import { authenticateWithGithub } from '@/http/routes/auth/authenticate-with-github'
+import { authenticateWithPassword } from '@/http/routes/auth/authenticate-with-password'
+import { getProfile } from '@/http/routes/auth/get-profile'
+import { requestPasswordRecover } from '@/http/routes/auth/request-password-recover'
+import { resetPassword } from '@/http/routes/auth/reset-password'
+import { createOrganization } from '@/http/routes/orgs/create-organization'
 
-import { authenticateWithPassword } from './routes/auth/authenticate-with-password'
 import { createAccount } from './routes/auth/create-account'
-import { getAuthenticatedProfile } from './routes/auth/get-profile'
-import { requestPasswordRecover } from './routes/auth/request-password-recover'
-import { requestPassword } from './routes/auth/reset-password'
+import { getMemberShip } from './routes/orgs/get-membership'
+import { getOrganization } from './routes/orgs/get-organization'
+import { getOrganizations } from './routes/orgs/get-organizations'
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
 
 app.setSerializerCompiler(serializerCompiler)
 app.setValidatorCompiler(validatorCompiler)
+
+app.setErrorHandler(errorHandler)
 
 app.register(fastifySwagger, {
   openapi: {
@@ -30,7 +38,15 @@ app.register(fastifySwagger, {
       description: 'Full-stack SaaS with multi-tenant & RBAC.',
       version: '1.0.0',
     },
-    servers: [],
+    components: {
+      securitySchemes: {
+        BearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
   },
   transform: jsonSchemaTransform,
 })
@@ -40,18 +56,23 @@ app.register(fastifySwaggerUI, {
 })
 
 app.register(fastifyJwt, {
-  secret: 'my-jwt-secret',
+  secret: env.JWT_SECRET,
 })
 
-app.setErrorHandler(errorHandler)
-
 app.register(fastifyCors)
+
 app.register(createAccount)
 app.register(authenticateWithPassword)
-app.register(getAuthenticatedProfile)
+app.register(authenticateWithGithub)
+app.register(getProfile)
 app.register(requestPasswordRecover)
-app.register(requestPassword)
+app.register(resetPassword)
 
-app.listen({ port: 3333 }).then(() => {
-  console.log('HTTP server running! 🔥')
+app.register(createOrganization)
+app.register(getMemberShip)
+app.register(getOrganizations)
+app.register(getOrganization)
+
+app.listen({ port: env.SERVER_PORT }).then(() => {
+  console.log('HTTP server running!')
 })

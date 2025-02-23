@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma'
 
 import { BadRequestError } from '../_errors/bad-request-error'
 
-export async function getAuthenticatedProfile(app: FastifyInstance) {
+export async function getProfile(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
     .register(auth)
@@ -17,6 +17,11 @@ export async function getAuthenticatedProfile(app: FastifyInstance) {
         schema: {
           tags: ['Auth'],
           summary: 'Get authenticated user profile',
+          security: [
+            {
+              BearerAuth: [],
+            },
+          ],
           response: {
             404: z.object({
               message: z.string(),
