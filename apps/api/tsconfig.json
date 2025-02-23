@@ -2,5 +2,15 @@
   "extends": "@saas/tsconfig/node.json",
   "include": [
     "src/**/*"
-  ]
+  ],
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
+    }
+  }
 }
