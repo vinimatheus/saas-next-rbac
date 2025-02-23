@@ -15,6 +15,8 @@ import { errorHandler } from '@/http/error-handler'
 import { authenticateWithPassword } from './routes/auth/authenticate-with-password'
 import { createAccount } from './routes/auth/create-account'
 import { getAuthenticatedProfile } from './routes/auth/get-profile'
+import { requestPasswordRecover } from './routes/auth/request-password-recover'
+import { requestPassword } from './routes/auth/reset-password'
 
 const app = fastify().withTypeProvider<ZodTypeProvider>()
 
@@ -47,6 +49,8 @@ app.register(fastifyCors)
 app.register(createAccount)
 app.register(authenticateWithPassword)
 app.register(getAuthenticatedProfile)
+app.register(requestPasswordRecover)
+app.register(requestPassword)
 
 app.listen({ port: 3333 }).then(() => {
   console.log('HTTP server running! 🔥')
