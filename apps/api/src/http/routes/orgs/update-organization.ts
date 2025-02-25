@@ -1,3 +1,4 @@
+import { organizationSchema } from '@saas/auth'
 import type { FastifyInstance } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
@@ -5,40 +6,57 @@ import { z } from 'zod'
 import { auth } from '@/http/middlewares/auth'
 import { BadRequestError } from '@/http/routes/_errors/bad-request-error'
 import { prisma } from '@/lib/prisma'
-import { createSlug } from '@/utils/create-slug'
+import { getUserPermission } from '@/utils/get-user-permission'
 
-export async function createOrganization(app: FastifyInstance) {
+export async function updateOrganization(app: FastifyInstance) {
   app
     .withTypeProvider<ZodTypeProvider>()
     .register(auth)
     .post(
-      '/organizations',
+      '/organizations/:slug',
       {
         schema: {
           tags: ['Organizations'],
           summary: 'Create a new organization',
           security: [{ BearerAuth: [] }],
+          params: z.object({
+            slug: z.string().uuid(),
+          }),
           body: z.object({
             name: z.string().min(1, 'Name is required'),
             domain: z.string().nullish(),
             shouldAttachUsersByDomain: z.boolean().optional(),
           }),
           response: {
-            201: z.object({
-              organizationId: z.string().uuid(),
-            }),
+            204: z.null(),
           },
         },
       },
       async (request, reply) => {
+        const { slug } = request.params
         const userId = await request.getCurrentUserId()
+        const { membership, organization } =
+          await request.getUserMembership(slug)
 
         const { name, domain, shouldAttachUsersByDomain } = request.body
 
+        const authOrgazanization = organizationSchema.parse(organization)
+
+        const { cannot } = getUserPermission(userId, membership.role)
+
+        if (cannot('update', authOrgazanization)) {
+          throw new BadRequestError(
+            'You are not allowed to update this organization.',
+          )
+        }
+
         if (domain) {
-          const organizationByDomain = await prisma.organization.findUnique({
+          const organizationByDomain = await prisma.organization.findFirst({
             where: {
               domain,
+              slug: {
+                not: slug,
+              },
             },
           })
 
@@ -49,25 +67,16 @@ export async function createOrganization(app: FastifyInstance) {
           }
         }
 
-        const organization = await prisma.organization.create({
+        await prisma.organization.update({
+          where: { id: organization.id },
           data: {
             name,
-            slug: createSlug(name),
             domain,
             shouldAttachUsersByDomain,
-            ownerId: userId,
-            members: {
-              create: {
-                userId,
-                role: 'ADMIN',
-              },
-            },
           },
         })
 
-        return reply.status(201).send({
-          organizationId: organization.id,
-        })
+        return reply.status(204).send()
       },
     )
 }
